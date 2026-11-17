@@ -15,14 +15,14 @@ https://github.com/bastelgarage/MirrorClock
 
 ### Pin Configuration
 
-- **IR Receiver**: GPIO4 (D4)
-- **NeoPixel Data**: GPIO2
+- **IR Receiver**: GPIO4 (D2)
+- **NeoPixel Data**: GPIO3 (RX), fixed by the ESP8266 I2S DMA output
 - **I2C SDA**: D4 (GPIO2)
 - **I2C SCL**: D3 (GPIO0)
 
 ## Libraries
 
-The following libraries are included in the `lib` folder:
+PlatformIO downloads these libraries automatically (see `lib_deps` in `platformio.ini`):
 
 - **WiFiManager** - Easy WiFi configuration via web portal
 - **Time** - Time handling library

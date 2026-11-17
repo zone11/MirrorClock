@@ -42,7 +42,7 @@ Libraries are pulled by PlatformIO from `lib_deps` into `.pio/libdeps/nodemcuv2/
 | crankyoldgit/IRremoteESP8266 | 2.8.6 | IR receiver (NEC codes) |
 | claws/BH1750 | 1.3.0 | Ambient light (I2C) |
 
-**The `lib/` folder is not compiled.** It contains older vendored copies (NeoPixelBus 2.2.9, IRremote 2.4.0, WiFiManager 0.12, …) from the original Arduino project. The PlatformIO dependency graph and include paths only reference `.pio/libdeps`. Don't edit anything in `lib/` expecting an effect.
+There is no vendored `lib/` folder; add libraries through `lib_deps`.
 
 ## Hardware and pins
 
@@ -100,12 +100,13 @@ Swiss-German style, 5-minute resolution plus dots:
 4. UDP on port 8888, `setSyncProvider(getNtpTime)`. `getNtpTime()` sets the resync interval itself: 86400 s after success, 60 s after a failure.
 5. Start IR receiver, `Wire.begin(D4, D3)`, `lightMeter.begin()`.
 
-**`loop()`** (about every 20 ms)
+**`loop()`** (`delay(20)` per pass)
 
-1. If time is set: `lokaleZeit()` (UTC → local into globals `h`, `m`, …), then `wort()` redraws all words and calls `Show()`.
+1. If time is set: `lokaleZeit()` (UTC → local into globals `h`, `m`), then `wort()` redraws all words into the buffer (skipped while a menu is open).
 2. `helligkeit()`: reads the BH1750 once per second (auto mode only) and sets the brightness.
 3. Leaves the menu after 6 s without a key press (`menuinterval`).
 4. Decodes IR. `0xFFFFFFFF` (NEC repeat) replays the last key.
+5. `strip.Show()`: the only per-loop LED update. Menu functions call `Show()` themselves for instant feedback; `clearDot()` only clears the buffer.
 
 **NTP**: `getNtpTime()` resolves `ch.pool.ntp.org`, sends a 48-byte request, waits up to 1.5 s. Returns UTC (the `timeZone` constant must stay 0 because Timezone does the conversion).
 
@@ -157,14 +158,12 @@ Nothing is persisted: color and brightness mode reset to defaults (color 1, auto
 ## Known issues
 
 - **Deprecation warning** for `NeoPixelBrightnessBus`. The replacement `NeoPixelBusLg` exists in the used 2.8.4 but uses `SetLuminance()` instead of `SetBrightness()` and applies gamma, so it's not a drop-in rename.
-- `README.md` lists wrong pins (IR is D2, LED data is RX/GPIO3) and says the `lib/` folder is used.
 
 ## Repo layout
 
 ```
 src/main.cpp        firmware (only source file)
 platformio.ini      build config and dependencies
-lib/                unused vendored libraries (legacy)
 workfiles/          personal notes/zips, git-ignored
 .pio/               build output and downloaded libs, git-ignored
 ```

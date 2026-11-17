@@ -26,19 +26,18 @@
 
 
 
-int h, m, s, w, mo, ye, d, htemp, hplus, luxSensor, taste;           // variablen für die lokale Zeit
+int h, m, luxSensor, taste;                 // h, m = lokale Zeit
 long messtimer = 0;
 long timerinterval = 1000;
 long aktuellertimer = 1000;
 long menuinterval = 6000;
 long menutimer = 0;
 int aktivmenu = 0;
-int menupunkt;
 
 // - BH1750 - //
 BH1750 lightMeter;
 uint16_t lux;
-int hellmodus = 0;                          // 0= Auto, 1=Manuell Auto, 2 = Manuell
+int hellmodus = 0;                          // 0 = Auto, 1 = Manuell
 int luxkorr = 0;
 int luxstufe = 2;
 
@@ -52,23 +51,15 @@ unsigned long key_value = 0;
 
 // - NeoPixelBus. - //
 const uint16_t PixelCount = 114;
-const uint8_t PixelPin = 2;
-#define colorSaturation 255
+const uint8_t PixelPin = 2;                 // wird ignoriert: die DMA-Methode nutzt immer GPIO3 (RX)
 NeoPixelBrightnessBus<NeoGrbFeature, Neo800KbpsMethod> strip(PixelCount, PixelPin);
-bool neustart = true;
 int aktivcolor = 1;
-
-const uint8_t c_MinBrightness = 45;
-const uint8_t c_MaxBrightness = 255;
-uint8_t brightness;
 
 RgbColor black(0);
 RgbColor white(200, 200, 200);
 int regenbogenfarbe= 0;
 unsigned long regenbogentimer;
 unsigned long regenbogeninterval = 100;
-
-int pixelpos[114];
 
 // NTP Serverpool für die Schweiz:
 static const char ntpServerName[] = "ch.pool.ntp.org";    //Finde lokale Server unter http://www.pool.ntp.org/zone/ch
@@ -77,8 +68,6 @@ WiFiUDP Udp;
 unsigned int localPort = 8888;              // lokaler Port zum Abhören von UDP-Paketen
 
 time_t getNtpTime();
-void digitalClockDisplay();
-void printDigits(int digits);
 void sendNTPpacket(IPAddress &address);
 
 // - Timezone. - //
@@ -87,9 +76,6 @@ void sendNTPpacket(IPAddress &address);
 TimeChangeRule CEST = {"CEST", Last, Sun, Mar, 2, 120};     //Central European Time (Frankfurt, Paris)
 TimeChangeRule CET = {"CET ", Last, Sun, Oct, 3, 60};       //Central European Time (Frankfurt, Paris)
 Timezone CE(CEST, CET);
-
-RgbColor color;
-uint8_t pos;
 
 // Forward declarations
 void helligkeit();
@@ -171,7 +157,8 @@ void loop()
     key_value = results.value;
     irrecv.resume();
   }
-  delay(5);
+  strip.Show();                             // einziges Show() pro Durchlauf
+  delay(20);
 }
 
 
@@ -191,7 +178,6 @@ void helligkeit() {
 
   if (hellmodus == 0) {
     strip.SetBrightness(lux);
-    strip.Show();
   }
   if (hellmodus == 1) {
     if (  aktivmenu == 1) {
@@ -199,7 +185,6 @@ void helligkeit() {
     menuanzeigeM();
     }
     strip.SetBrightness(luxkorr);
-    strip.Show();
   }
 }
 
@@ -463,11 +448,6 @@ void menuanzeigeM() { // Manueller helligkeit
 
 void clearDot() {
   strip.ClearTo(black);
-  for (int i = 0; i < PixelCount; i++)
-  {
-    pixelpos[i] = 0;
-  }
-  strip.Show();
 }
 
 void pixeltest() {
@@ -550,8 +530,6 @@ void neo(int led) {
       strip.SetPixelColor(led, HslColor((regenbogenfarbe) / 360.0f, 1.0f, 0.25f));
       break;
   }
-  pixelpos[led] = 1;  // eine 1 in das Array schreiben fals die LED an ist für regenbogen
-  //rainbow();
 }
 
 
@@ -559,11 +537,6 @@ void wort() {
   if (aktivmenu == 0) {
     timebuilder();
   }
-
-  delay(5);
-  strip.Show();
-  delay(10);
-  neustart = false;
 }
 
 
@@ -1189,25 +1162,11 @@ void lokaleZeit()
 {
   time_t tT = now();
   time_t tTlocal = CE.toLocal(tT);
-  w = weekday(tTlocal);
-  d = day(tTlocal);
-  mo = month(tTlocal);
-  ye = year(tTlocal);
   h = hour(tTlocal);
   m = minute(tTlocal);
-  s = second(tTlocal);
 }
 
 
-
-void printDigits(int digits)
-{
-  // Utility für digitale Uhrenanzeige: druckt vor Doppelpunkt und führende 0
-  Serial.print(":");
-  if (digits < 10)
-    Serial.print('0');
-  Serial.print(digits);
-}
 
 /*-------- NTP code ----------*/
 
