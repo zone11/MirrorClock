@@ -33,11 +33,11 @@ ESP8266WebServer server(80);                // Test ohne Fernbedienung, nur mit 
 
 
 int h, m, luxSensor, taste;                 // h, m = lokale Zeit
-long messtimer = 0;
-long timerinterval = 1000;
-long aktuellertimer = 1000;
-long menuinterval = 6000;
-long menutimer = 0;
+unsigned long messtimer = 0;
+unsigned long timerinterval = 1000;
+unsigned long aktuellertimer = 1000;
+unsigned long menuinterval = 6000;
+unsigned long menutimer = 0;
 int aktivmenu = 0;
 
 // - BH1750 - //
