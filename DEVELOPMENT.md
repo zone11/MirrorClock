@@ -1,5 +1,7 @@
 # Development Guide
 
+> **Branch `rewrite`:** the firmware is being restructured into modules (see [REWRITE.md](REWRITE.md) for the plan and the module list). Function and variable names below still refer to the old single-file firmware; this guide is rewritten in phase 7. Build flag `WEB_TASTE` is now `WEB_KEYS` (`/key?nr=`). Host tests: `pio test -e native`.
+
 Technical notes for working on the MirrorClock firmware. For user-facing setup (WiFi portal, remote keys) see [README.md](README.md).
 
 ## Overview
