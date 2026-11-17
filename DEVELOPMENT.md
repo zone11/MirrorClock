@@ -94,7 +94,7 @@ Swiss-German style, 5-minute resolution plus dots:
 
 **`setup()`**
 
-1. `strip.Begin()`, `pixeltest()`: red, green, blue chase over all 114 LEDs (~17 s).
+1. `strip.Begin()`. Only with build flag `-DLED_TEST` (commented out in `platformio.ini`): `pixeltest()`, a red, green, blue chase over all 114 LEDs (~17 s).
 2. Show the WiFi glyph (LEDs 44, 45, 53, 54).
 3. `WiFiManager.autoConnect("MirrorClock")`: blocks until connected. With no saved credentials it opens the AP + config portal.
 4. UDP on port 8888, `setSyncProvider(getNtpTime)`. `getNtpTime()` sets the resync interval itself: 86400 s after success, 60 s after a failure.

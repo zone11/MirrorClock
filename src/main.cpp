@@ -115,7 +115,9 @@ void setlux();
 void setup() {
   Serial.begin(115200);
   strip.Begin();
-  pixeltest();
+#ifdef LED_TEST
+  pixeltest();                              // nur mit Build-Flag -DLED_TEST
+#endif
   sym_showwifi();
   strip.Show();
   WiFiManager wifiManager;
