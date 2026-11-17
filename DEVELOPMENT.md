@@ -27,7 +27,7 @@ pio device monitor      # serial log
 pio run -t clean        # clean build
 ```
 
-The build currently produces one warning: `NeoPixelBrightnessBus` is deprecated (see [Known issues](#known-issues)).
+The build produces no warnings.
 
 ## Libraries
 
@@ -57,6 +57,7 @@ There is no vendored `lib/` folder; add libraries through `lib_deps`.
 
 - Serial RX cannot be used (TX/logging works).
 - `Show()` runs via DMA and does not block interrupts, so IR reception isn't disturbed by LED updates.
+- The bus is `NeoPixelBusLg` with `NeoGammaNullMethod`: brightness scales colors linearly like the old `NeoPixelBrightnessBus`. Swap in `NeoGammaEquationMethod` for gamma correction (dims low levels and colors noticeably).
 - If you change the method (e.g. to `NeoEsp8266Uart1Ws2812xMethod` for GPIO2), the strip moves to a different pin, which collides with I2C SDA on this board.
 
 ## LED layout
@@ -102,8 +103,8 @@ Swiss-German style, 5-minute resolution plus dots:
 
 **`loop()`** (`delay(20)` per pass)
 
-1. If time is set: `lokaleZeit()` (UTC → local into globals `h`, `m`), then `wort()` redraws all words into the buffer (skipped while a menu is open).
-2. `helligkeit()`: reads the BH1750 once per second (auto mode only) and sets the brightness.
+1. `helligkeit()`: reads the BH1750 once per second (auto mode only) and sets the brightness. It runs before drawing because `SetLuminance()` only affects pixels set afterwards.
+2. If time is set: `lokaleZeit()` (UTC → local into globals `h`, `m`), then `wort()` redraws all words into the buffer (skipped while a menu is open).
 3. Leaves the menu after 6 s without a key press (`menuinterval`).
 4. Decodes IR. `0xFFFFFFFF` (NEC repeat) replays the last key.
 5. `strip.Show()`: the only per-loop LED update. Menu functions call `Show()` themselves for instant feedback; `clearDot()` only clears the buffer.
@@ -152,12 +153,13 @@ To add a remote: log `results.value` over serial and add `case` lines in `transl
 | IR pin | `RECV_PIN` |
 | Manual brightness levels | `setlux()` |
 | Rainbow speed | `regenbogeninterval` |
+| Remote keys over WiFi (testing) | build flag `-DWEB_TASTE` in `platformio.ini`: `http://<clock-ip>/taste?nr=<0-9, 11-17>` presses that key (same numbers as `taste`), without `nr` it returns the current state. No auth, so keep it out of normal builds |
 
-Nothing is persisted: color and brightness mode reset to defaults (color 1, auto) on every reboot.
+Color (`aktivcolor`, `regenbogenfarbe`) and brightness (`hellmodus`, `luxstufe`) are saved to flash via the EEPROM emulation (16 bytes at offset 0) after each recognised key press, and restored by `laden()` at boot. `EEPROM.commit()` only writes when a value changed. Invalid values (empty flash) are ignored and the defaults (color 1, auto) stay.
 
 ## Known issues
 
-- **Deprecation warning** for `NeoPixelBrightnessBus`. The replacement `NeoPixelBusLg` exists in the used 2.8.4 but uses `SetLuminance()` instead of `SetBrightness()` and applies gamma, so it's not a drop-in rename.
+None known.
 
 ## Repo layout
 

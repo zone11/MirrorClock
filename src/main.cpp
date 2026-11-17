@@ -18,12 +18,17 @@
 #include <Timezone.h>                       //https://github.com/JChristensen/Timezone
 #include <TimeLib.h>                        //https://github.com/PaulStoffregen/Time
 #include <WiFiUdp.h>
-#include <NeoPixelBrightnessBus.h>
+#include <NeoPixelBusLg.h>
+#include <EEPROM.h>
 #include <IRremoteESP8266.h>
 #include <IRrecv.h>
 #include <IRutils.h>
 #include <Wire.h>
 #include <BH1750.h>                         //https://github.com/claws/BH1750
+#ifdef WEB_TASTE
+#include <ESP8266WebServer.h>
+ESP8266WebServer server(80);                // Test ohne Fernbedienung, nur mit Build-Flag -DWEB_TASTE
+#endif
 
 
 
@@ -53,7 +58,7 @@ unsigned long key_value = 0;
 // - NeoPixelBus. - //
 const uint16_t PixelCount = 114;
 const uint8_t PixelPin = 2;                 // wird ignoriert: die DMA-Methode nutzt immer GPIO3 (RX)
-NeoPixelBrightnessBus<NeoGrbFeature, Neo800KbpsMethod> strip(PixelCount, PixelPin);
+NeoPixelBusLg<NeoGrbFeature, Neo800KbpsMethod, NeoGammaNullMethod> strip(PixelCount, PixelPin);  // ohne Gamma = gleiche Farben wie bisher
 int aktivcolor = 1;
 
 RgbColor black(0);
@@ -113,9 +118,13 @@ void lokaleZeit();
 void heller();
 void dunkler();
 void setlux();
+void speichern();
+void laden();
 
 void setup() {
   Serial.begin(115200);
+  EEPROM.begin(16);
+  laden();                                  // Farbe und Helligkeit vom letzten Mal
   strip.Begin();
 #ifdef LED_TEST
   pixeltest();                              // nur mit Build-Flag -DLED_TEST
@@ -135,6 +144,24 @@ void setup() {
   irrecv.enableIRIn();  // Start the receiver
   Wire.begin(D4, D3);                       // (D3,SCL) und (D4,SDA) pins
   lightMeter.begin();
+#ifdef WEB_TASTE
+  // /taste?nr=5 drückt Taste 5 wie die Fernbedienung (0-9, 11-17); ohne nr nur Status
+  server.on("/taste", []() {
+    if (server.hasArg("nr")) {
+      String nr = server.arg("nr");
+      int wert = nr.toInt();
+      if (nr != String(wert) || wert < 0 || wert > 17 || wert == 10) {
+        server.send(400, "text/plain", "nr muss 0-9 oder 11-17 sein\n");
+        return;
+      }
+      taste = wert;
+      tastecheck();
+    }
+    server.send(200, "text/plain", "aktivcolor=" + String(aktivcolor) + " regenbogenfarbe=" + String(regenbogenfarbe)
+                + " hellmodus=" + String(hellmodus) + " luxstufe=" + String(luxstufe) + " aktivmenu=" + String(aktivmenu) + "\n");
+  });
+  server.begin();
+#endif
 
 }
 
@@ -143,12 +170,15 @@ time_t prevDisplay = 0; // wenn die Digitaluhr angezeigt wurde
 void loop()
 {
   aktuellertimer = millis();
+#ifdef WEB_TASTE
+  server.handleClient();
+#endif
+  helligkeit();                                 // vor dem Zeichnen: SetLuminance wirkt nur auf neu gesetzte Pixel
   if (timeStatus() != timeNotSet) {             // wenn die Zeit über NTP gesetzt wurde
     lokaleZeit();
     wort();
   }
 
-  helligkeit();
   if (aktuellertimer - menutimer > menuinterval) {
     aktivmenu = 0;
   }
@@ -181,14 +211,14 @@ void helligkeit() {
   lux = map(constrain(luxSensor, 0, 10), 0, 10, 40, 255);  // vor map begrenzen, sonst Überlauf in uint16_t
 
   if (hellmodus == 0) {
-    strip.SetBrightness(lux);
+    strip.SetLuminance(lux);
   }
   if (hellmodus == 1) {
     if (  aktivmenu == 1) {
     setlux();
     menuanzeigeM();
     }
-    strip.SetBrightness(luxkorr);
+    strip.SetLuminance(luxkorr);
   }
 }
 
@@ -279,6 +309,43 @@ void tastecheck() {
       }
       break;
   }
+  if (taste != 99) {
+    speichern();
+  }
+}
+
+
+/************************( einstellungen )************************/
+
+// Farbe und Helligkeit im Flash (EEPROM-Emulation) über einen Neustart behalten
+void speichern() {
+  EEPROM.put(0, aktivcolor);
+  EEPROM.put(4, regenbogenfarbe);           // nötig für die eingefrorene Farbe (99)
+  EEPROM.put(8, hellmodus);
+  EEPROM.put(12, luxstufe);
+  EEPROM.commit();                          // schreibt nur, wenn sich ein Wert geändert hat
+}
+
+void laden() {
+  int farbe, regenbogen, modus, stufe;
+  EEPROM.get(0, farbe);
+  EEPROM.get(4, regenbogen);
+  EEPROM.get(8, modus);
+  EEPROM.get(12, stufe);
+  // leeres oder fremdes Flash: ungültige Werte ignorieren, Standardwerte bleiben
+  if ((farbe >= 0 && farbe <= 9) || farbe == 77 || farbe == 88 || farbe == 99) {
+    aktivcolor = farbe;
+  }
+  if (regenbogen >= 0 && regenbogen < 360) {
+    regenbogenfarbe = regenbogen;
+  }
+  if (modus == 0 || modus == 1) {
+    hellmodus = modus;
+  }
+  if (stufe >= 1 && stufe <= 5) {
+    luxstufe = stufe;
+  }
+  setlux();                                 // luxkorr für manuellen Modus
 }
 
 
