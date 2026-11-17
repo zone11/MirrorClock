@@ -6,7 +6,7 @@ Technical notes for working on the MirrorClock firmware. For user-facing setup (
 
 A Swiss-German word clock ("ES ISCH FÜF AB DRÜ") behind a mirror. An ESP8266 gets the time via NTP, converts it to CET/CEST and lights words on a 114-LED WS2812B strip. Brightness follows a BH1750 light sensor or one of 5 manual levels. An IR remote changes colors and brightness mode.
 
-All firmware lives in a single file: `src/main.cpp` (~1300 lines, ported from a multi-tab Arduino sketch; the `/***( xyz.ino )***/` banners mark the original tabs).
+All firmware lives in a single file: `src/main.cpp` (~580 lines, ported from a multi-tab Arduino sketch; the `/***( xyz.ino )***/` banners mark the original tabs).
 
 ## Toolchain
 
@@ -73,7 +73,7 @@ Example: "ES ISCH" = row 0, columns 0,1,3,4,5,6 → LEDs 0, 19, 39, 40, 59, 60.
 
 Minute dots: 112 (+1), 111–112 (+2), 110–112 (+3), 110–113 (+4).
 
-Word → LED mapping is hard-coded in the `woerter.ino` section (`itis`, `m5`, `m10`, `m15`, `m20`, `before`, `after`, `half`, `houres`). Menu glyphs (`sym_aa`, `sym_mm`, `sym_stufe`, `sym_showwifi`) are in the `symbole.ino` section.
+Each word is a `leds({...})` list of LED numbers in the `woerter.ino` section (`itis`, `m5`, `m10`, `m15`, `m20`, `before`, `after`, `half`, `houres`). Menu glyphs (`sym_aa`, `sym_mm`, `sym_stufe`, `sym_showwifi`) are in the `symbole.ino` section.
 
 ## Time-to-words logic
 
@@ -88,7 +88,7 @@ Swiss-German style, 5-minute resolution plus dots:
 | 35 | FÜF **AB** HALBI `<hour+1>` |
 | 40 / 45 / 50 / 55 | ZWÄNZG / VIERTU / ZÄH / FÜF **VOR** `<hour+1>` |
 
-`m % 5` lights the minute dots. `houres()` converts to 12 h and adds 1 when `m > 24`; hour 0 and 12 both show ZWÖLFI.
+`minutes()` picks the words with `switch (m / 5)` and the minute dots with `switch (m % 5)`. `houres()` uses `h % 12` and adds 1 when `m > 24`; hour 0 and 12 both show ZWÖLFI.
 
 ## Runtime flow
 

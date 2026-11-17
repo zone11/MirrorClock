@@ -9,6 +9,7 @@
 */
 
 #include <Arduino.h>
+#include <initializer_list>
 
 /************************( Importieren der genutzten Bibliotheken )************************/
 
@@ -87,6 +88,7 @@ void menuanzeigeM();
 void clearDot();
 void pixeltest();
 void neo(int led);
+void leds(std::initializer_list<uint8_t> liste);
 void wort();
 void sym_showwifi();
 void sym_mm();
@@ -104,7 +106,7 @@ void min1();
 void min2();
 void min3();
 void min4();
-void houres(int htemp);
+void houres();
 void timebuilder();
 void minutes();
 void lokaleZeit();
@@ -212,26 +214,8 @@ void dunkler() {
 
 
 void setlux() { //manuell
-  switch (luxstufe) {
-    case 1 :
-      luxkorr = 30;
-      break;
-    case 2 :
-      luxkorr = 60;
-      break;
-    case 3 :
-      luxkorr = 100;
-      break;
-    case 4 :
-      luxkorr = 150;
-      break;
-    case 5 :
-      luxkorr = 255;
-      break;
-    default:
-      luxkorr = 30;
-      break;
-  }
+  const int stufen[] = {30, 60, 100, 150, 255};   // Stufe 1-5
+  luxkorr = stufen[constrain(luxstufe, 1, 5) - 1];
 }
 
 
@@ -239,174 +223,62 @@ void setlux() { //manuell
 
 void translateIR(decode_results *results)
 {
-  switch (results->value) {
-    case 0xFD00FF:            // 1
-      taste = 1;
-      break;
-    case 0xFFA25D:
-      taste = 1;
-      break;
-    case 0xFD807F:            // 2
-      taste = 2;
-      break;
-    case 0xFF629D:
-      taste = 2;
-      break;
-    case 0xFD40BF:            // 3
-      taste = 3;
-      break;
-    case 0xFFE21D:
-      taste = 3;
-      break;
-    case 0xFD20DF:            // 4
-      taste = 4;
-      break;
-    case 0xFF22DD:
-      taste = 4;
-      break;
-    case 0xFDA05F:            // 5
-      taste = 5;
-      break;
-    case 0xFF02FD:
-      taste = 5;
-      break;
-    case 0xFD609F:            // 6
-      taste = 6;
-      break;
-    case 0xFFC23D:
-      taste = 6;
-      break;
-    case 0xFD10EF:            // 7
-      taste = 7;
-      break;
-    case 0xFFE01F:
-      taste = 7;
-      break;
-    case 0xFD906F:            // 8
-      taste = 8;
-      break;
-    case 0xFFA857:
-      taste = 8;
-      break;
-    case 0xFD50AF:            // 9
-      taste = 9;
-      break;
-    case 0xFF906F:
-      taste = 9;
-      break;
-    case 0xFDB04F:            // 0
-      taste = 0;
-      break;
-    case 0xFF9867:
-      taste = 0;
-      break;
-    case 0xFD708F:            // * = 11
-      taste = 11;
-      break;
-    case 0xFF6897:
-      taste = 11;
-      break;
-    case 0xFFB04F:            // # = 12
-      taste = 12;
-      break;
-    case 0x2C739B:
-      taste = 12;
-      break;
-    case 0xFD8877:            // hoch 13
-      taste = 13;
-      break;
-    case 0xFF18E7:
-      taste = 13;
-      break;
-    case 0xFD28D7:            // links = 14
-      taste = 14;
-      break;
-    case 0xFF10EF:
-      taste = 14;
-      break;
-    case 0xFDA857:            // OK = 15
-      taste = 15;
-      break;
-    case 0xFF38C7:
-      taste = 15;
-      break;
-    case 0xFD6897:            // rechts = 16
-      taste = 16;
-      break;
-    case 0xFF5AA5:
-      taste = 16;
-      break;
-    case 0xFD9867:            // runter 17
-      taste = 17;
-      break;
-    case 0xFF4AB5:
-      taste = 17;
-      break;
+  taste = 99;               // unbekannter Code = keine Aktion
+  switch (results->value) { // je zwei Codes: Fernbedienung 0xFD.... und 0xFF....
+    case 0xFD00FF: case 0xFFA25D: taste = 1;  break;
+    case 0xFD807F: case 0xFF629D: taste = 2;  break;
+    case 0xFD40BF: case 0xFFE21D: taste = 3;  break;
+    case 0xFD20DF: case 0xFF22DD: taste = 4;  break;
+    case 0xFDA05F: case 0xFF02FD: taste = 5;  break;
+    case 0xFD609F: case 0xFFC23D: taste = 6;  break;
+    case 0xFD10EF: case 0xFFE01F: taste = 7;  break;
+    case 0xFD906F: case 0xFFA857: taste = 8;  break;
+    case 0xFD50AF: case 0xFF906F: taste = 9;  break;
+    case 0xFDB04F: case 0xFF9867: taste = 0;  break;
+    case 0xFD708F: case 0xFF6897: taste = 11; break;  // *
+    case 0xFFB04F: case 0x2C739B: taste = 12; break;  // #
+    case 0xFD8877: case 0xFF18E7: taste = 13; break;  // hoch
+    case 0xFD28D7: case 0xFF10EF: taste = 14; break;  // links
+    case 0xFDA857: case 0xFF38C7: taste = 15; break;  // OK
+    case 0xFD6897: case 0xFF5AA5: taste = 16; break;  // rechts
+    case 0xFD9867: case 0xFF4AB5: taste = 17; break;  // runter
   }
   tastecheck();
 }
 
 void tastecheck() {
+  if (taste <= 9) {         // Farbe 0-9
+    aktivcolor = taste;
+  }
   switch (taste) {
-    case 1:               // Farbe 1
-      aktivcolor = 1;
-      break;
-    case 2:               // Farbe 2
-      aktivcolor = 2;
-      break;
-    case 3:               // Farbe 3
-      aktivcolor = 3;
-      break;
-    case 4:               // Farbe 4
-      aktivcolor = 4;
-      break;
-    case 5:               // Farbe 5
-      aktivcolor = 5;
-      break;
-    case 6:               // Farbe 6
-      aktivcolor = 6;
-      break;
-    case 7:               // Farbe 7
-      aktivcolor = 7;
-      break;
-    case 8:               // Farbe 8
-      aktivcolor = 8;
-      break;
-    case 9:               // Farbe 9
-      aktivcolor = 9;
-      break;
-    case 0:               // Farbe 0
-      aktivcolor = 0;
-      break;
-    case 11:               // Farbe RGB alle
+    case 11:                // Farbe RGB alle
       aktivcolor = 88;
       break;
-    case 12:               // Farbe Regenbogenfarben
+    case 12:                // Regenbogenfarben
       aktivcolor = 77;
       break;
-    case 13:               // Farbe Regenbogenfarben
+    case 13:                // hoch: heller
       if (aktivmenu == 1) {
         heller();
       }
       break;
-    case 14:               // Farbe Regenbogenfarben
+    case 14:                // links: Menu Auto-Helligkeit
       menuein(1);
       break;
-    case 15:               // OK
-      if (aktivcolor == 88) { //wenn rgb läuft
+    case 15:                // OK: RGB-Farbe einfrieren
+      if (aktivcolor == 88) {
         aktivcolor = 99;
       }
       break;
-    case 16:               // Farbe Regenbogenfarben
+    case 16:                // rechts: Menu manuelle Helligkeit
       menuein(2);
       break;
-    case 17:               // Farbe Regenbogenfarben
+    case 17:                // runter: dunkler
       if (aktivmenu == 1) {
         dunkler();
       }
       break;
   }
-  taste = 99;
 }
 
 
@@ -453,23 +325,13 @@ void clearDot() {
 }
 
 void pixeltest() {
-  for (int i = 0; i < PixelCount; i++) {
-    strip.SetPixelColor(i, HslColor((0) / 360.0f, 1.0f, 0.25f));
-    strip.Show();
-    delay(50); // Delay for a period of time (in milliseconds).
-    clearDot();
-  }
-  for (int i = 0; i < PixelCount; i++) {
-    strip.SetPixelColor(i, HslColor((120) / 360.0f, 1.0f, 0.25f));
-    strip.Show();
-    delay(50); // Delay for a period of time (in milliseconds).
-    clearDot();
-  }
-  for (int i = 0; i < PixelCount; i++) {
-    strip.SetPixelColor(i, HslColor((240) / 360.0f, 1.0f, 0.25f));
-    strip.Show();
-    delay(50); // Delay for a period of time (in milliseconds).
-    clearDot();
+  for (int farbe : {0, 120, 240}) {         // rot, grün, blau
+    for (int i = 0; i < PixelCount; i++) {
+      strip.SetPixelColor(i, HslColor(farbe / 360.0f, 1.0f, 0.25f));
+      strip.Show();
+      delay(50);
+      clearDot();
+    }
   }
 }
 
@@ -542,262 +404,74 @@ void wort() {
 }
 
 
+// alle LEDs der Liste in der aktiven Farbe setzen
+void leds(std::initializer_list<uint8_t> liste) {
+  for (uint8_t led : liste) {
+    neo(led);
+  }
+}
+
+
 /************************( symbole.ino )************************/
 
 void sym_showwifi() {
-  neo(44);
-  neo(45);
-  neo(53);
-  neo(54);
+  leds({44, 45, 53, 54});
 }
 
 void sym_mm() { //  male ein M für Manuell oben links
-  neo(0);
-  neo(1);
-  neo(2);
-  neo(3);
-  neo(4);
-  neo(18);
-  neo(22);
-  neo(38);
-  neo(40);
-  neo(41);
-  neo(42);
-  neo(43);
-  neo(44);
+  leds({0, 1, 2, 3, 4, 18, 22, 38, 40, 41, 42, 43, 44});
 }
-void sym_aa() { //  male ein A für Auto oben links
 
-  neo(1);
-  neo(2);
-  neo(3);
-  neo(4);
-  neo(17);
-  neo(19);
-  neo(20);
-  neo(22);
-  neo(37);
-  neo(39);
-  neo(41);
-  neo(42);
-  neo(43);
-  neo(44);
+void sym_aa() { //  male ein A für Auto oben links
+  leds({1, 2, 3, 4, 17, 19, 20, 22, 37, 39, 41, 42, 43, 44});
 }
-void sym_stufe() {
+
+void sym_stufe() { // Balken für Helligkeitsstufe 1-5, jede Stufe ergänzt die tieferen
   switch (luxstufe) {
-    case 1 :            // 1
-      neo(69);
-      break;
-    case 2 :            // 2
-      neo(69);
-      neo(70);
-      neo(71);
-      break;
-    case 3 :            // 3
-      neo(69);
-      neo(70);
-      neo(71);
-      neo(87);
-      neo(88);
-      neo(89);
-      break;
-    case 4 : // 4
-      neo(69);
-      neo(70);
-      neo(71);
-      neo(87);
-      neo(88);
-      neo(89);
-      neo(90);
-      neo(91);
-      neo(92);
-      neo(93);
-      break;
-    case 5 :            // 5
-      neo(69);
-      neo(70);
-      neo(71);
-      neo(87);
-      neo(88);
-      neo(89);
-      neo(90);
-      neo(91);
-      neo(92);
-      neo(93);
-      neo(105);
-      neo(109);
-      neo(108);
-      neo(107);
-      neo(106);
-      break;
+    case 5: leds({105, 106, 107, 108, 109}); // fallthrough
+    case 4: leds({90, 91, 92, 93});          // fallthrough
+    case 3: leds({87, 88, 89});              // fallthrough
+    case 2: leds({70, 71});                  // fallthrough
+    case 1: leds({69});
   }
 }
 
 
 /************************( woerter.ino )************************/
 
-void itis() { //
-  neo(0);
-  neo(19);
-  neo(39);
-  neo(40);
-  neo(59);
-  neo(60);
-}
-void m5() { //
-  neo(80);
-  neo(99);
-  neo(100);
-}
-void m15() { //
-  neo(1);
-  neo(18);
-  neo(21);
-  neo(38);
-  neo(41);
-  neo(58);
-}
-void m10() { //
-  neo(81);
-  neo(98);
-  neo(101);
-}
-void m20() { //
-  neo(2);
-  neo(17);
-  neo(22);
-  neo(37);
-  neo(42);
-  neo(57);
-}
-void before() { //
-  neo(82);
-  neo(97);
-  neo(102);
-}
-void after() { //
-  neo(3);
-  neo(16);
-}
-void half() { //
-  neo(36);
-  neo(43);
-  neo(56);
-  neo(63);
-  neo(76);
-}
-void min1() { //
-  neo(112);
-}
-void min2() { //
-  neo(112);
-  neo(111);
-}
-void min3() { //
-  neo(110);
-  neo(111);
-  neo(112);
-}
-void min4() { //
-  neo(110);
-  neo(111);
-  neo(112);
-  neo(113);
-}
-void houres(int htemp) {
-  if (h >= 12) {
-    htemp = (h - 12);
-  }
-  if (m > 24){
-    htemp = htemp+1;
+void itis()   { leds({0, 19, 39, 40, 59, 60}); }      // ES ISCH
+void m5()     { leds({80, 99, 100}); }                // FÜF
+void m10()    { leds({81, 98, 101}); }                // ZÄH
+void m15()    { leds({1, 18, 21, 38, 41, 58}); }      // VIERTU
+void m20()    { leds({2, 17, 22, 37, 42, 57}); }      // ZWÄNZG
+void before() { leds({82, 97, 102}); }                // VOR
+void after()  { leds({3, 16}); }                      // AB
+void half()   { leds({36, 43, 56, 63, 76}); }         // HALBI
+void min1()   { leds({112}); }                        // Minutenpunkte
+void min2()   { leds({111, 112}); }
+void min3()   { leds({110, 111, 112}); }
+void min4()   { leds({110, 111, 112, 113}); }
+
+void houres() {
+  int htemp = h % 12;
+  if (m > 24) {             // ab "füf vor halbi" gilt die nächste Stunde
+    htemp = htemp + 1;
   }
 
   switch (htemp) {
-    case 1:
-      neo(4);
-      neo(15);
-      neo(24);
-      break;
-    case 2:
-      neo(35);
-      neo(44);
-      neo(55);
-      neo(64);
-      break;
-    case 3:
-      neo(84);
-      neo(95);
-      neo(104);
-      break;
-    case 4:
-      neo(5);
-      neo(14);
-      neo(25);
-      neo(34);
-      neo(45);
-      break;
-    case 5:
-      neo(54);
-      neo(65);
-      neo(74);
-      neo(85);
-      break;
-    case 6:
-      neo(6);
-      neo(13);
-      neo(26);
-      neo(33);
-      neo(46);
-      neo(53);
-      break;
-    case 7:
-      neo(66);
-      neo(73);
-      neo(86);
-      neo(93);
-      neo(106);
-      break;
-    case 8:
-      neo(7);
-      neo(12);
-      neo(27);
-      neo(32);
-      neo(47);
-      break;
-    case 9:
-      neo(52);
-      neo(67);
-      neo(72);
-      neo(87);
-      break;
-    case 10:
-      neo(8);
-      neo(11);
-      neo(28);
-      neo(31);
-      break;
-    case 11:
-      neo(71);
-      neo(88);
-      neo(91);
-      neo(108);
-      break;
-    case 12:
-      neo(9);
-      neo(10);
-      neo(29);
-      neo(30);
-      neo(49);
-      neo(50);
-      break;
-      case 0:
-      neo(9);
-      neo(10);
-      neo(29);
-      neo(30);
-      neo(49);
-      neo(50);
-      break;
+    case 1:  leds({4, 15, 24}); break;
+    case 2:  leds({35, 44, 55, 64}); break;
+    case 3:  leds({84, 95, 104}); break;
+    case 4:  leds({5, 14, 25, 34, 45}); break;
+    case 5:  leds({54, 65, 74, 85}); break;
+    case 6:  leds({6, 13, 26, 33, 46, 53}); break;
+    case 7:  leds({66, 73, 86, 93, 106}); break;
+    case 8:  leds({7, 12, 27, 32, 47}); break;
+    case 9:  leds({52, 67, 72, 87}); break;
+    case 10: leds({8, 11, 28, 31}); break;
+    case 11: leds({71, 88, 91, 108}); break;
+    case 0:
+    case 12: leds({9, 10, 29, 30, 49, 50}); break;
   }
 }
 
@@ -811,351 +485,25 @@ void timebuilder() {
 }
 
 void minutes() {
-  switch (m) {
-    case 0:
-      houres(h);
-      break;
-    case 1:
-      houres(h);
-      min1();
-      break;
-    case 2:
-      houres(h);
-      min2();
-      break;
-    case 3:
-      houres(h);
-      min3();
-      break;
-    case 4:
-      houres(h);
-      min4();
-      break;
-    case 5:
-      houres(h);
-      m5();
-      after();
-      break;
-    case 6:
-      houres(h);
-      m5();
-      after();
-      min1();
-      break;
-    case 7:
-      houres(h);
-      m5();
-      after();
-      min2();
-      break;
-    case 8:
-      houres(h);
-      m5();
-      after();
-      min3();
-      break;
-    case 9:
-      houres(h);
-      m5();
-      after();
-      min4();
-      break;
-    case 10:
-      houres(h);
-      m10();
-      after();
-      break;
-    case 11:
-      houres(h);
-      m10();
-      after();
-      min1();
-      break;
-    case 12:
-      houres(h);
-      m10();
-      after();
-      min2();
-      break;
-    case 13:
-      houres(h);
-      m10();
-      after();
-      min3();
-      break;
-    case 14:
-      houres(h);
-      m10();
-      after();
-      min4();
-      break;
-    case 15:
-      houres(h);
-      m15();
-      after();
-      break;
-    case 16:
-      houres(h);
-      m15();
-      after();
-      min1();
-      break;
-    case 17:
-      houres(h);
-      m15();
-      after();
-      min2();
-      break;
-    case 18:
-      houres(h);
-      m15();
-      after();
-      min3();
-      break;
-    case 19:
-      houres(h);
-      m15();
-      after();
-      min4();
-      break;
-    case 20:
-      houres(h);
-      m20();
-      after();
-      break;
-    case 21:
-      houres(h);
-      m20();
-      after();
-      min1();
-      break;
-    case 22:
-      houres(h);
-      m20();
-      after();
-      min2();
-      break;
-    case 23:
-      houres(h);
-      m20();
-      after();
-      min3();
-      break;
-    case 24:
-      houres(h);
-      m20();
-      after();
-      min4();
-      break;
-    case 25:
-     houres(h);
-      m5();
-      before();
-      half();
-      break;
-    case 26:
-     houres(h);
-      m5();
-      before();
-      half();
-      min1();
-      break;
-    case 27:
-     houres(h);
-      m5();
-      before();
-      half();
-      min2();
-      break;
-    case 28:
-     houres(h);
-      m5();
-      before();
-      half();
-      min3();
-      break;
-    case 29:
-     houres(h);
-      m5();
-      before();
-      half();
-      min4();
-      break;
-    case 30:
-     houres(h);
-      half();
-      break;
-    case 31:
-     houres(h);
-      half();
-      min1();
-      break;
-    case 32:
-     houres(h);
-      half();
-      min2();
-      break;
-    case 33:
-     houres(h);
-      half();
-      min3();
-      break;
-    case 34:
-     houres(h);
-      half();
-      min4();
-      break;
-    case 35:
-     houres(h);
-      half();
-      m5();
-      after();
-      break;
-    case 36:
-     houres(h);
-      half();
-      m5();
-      after();
-      min1();
-      break;
-    case 37:
-     houres(h);
-      half();
-      m5();
-      after();
-      min2();
-      break;
-    case 38:
-     houres(h);
-      half();
-      m5();
-      after();
-      min3();
-      break;
-    case 39:
-     houres(h);
-      half();
-      m5();
-      after();
-      min4();
-      break;
-    case 40:
-     houres(h);
-      m20();
-      before();
-      break;
-    case 41:
-     houres(h);
-      m20();
-      before();
-      min1();
-      break;
-    case 42:
-     houres(h);
-      m20();
-      before();
-      min2();
-      break;
-    case 43:
-     houres(h);
-      m20();
-      before();
-      min3();
-      break;
-    case 44:
-     houres(h);
-      m20();
-      before();
-      min4();
-      break;
-    case 45:
-     houres(h);
-      m15();
-      before();
-      break;
-    case 46:
-     houres(h);
-      m15();
-      before();
-      min1();
-      break;
-    case 47:
-     houres(h);
-      m15();
-      before();
-      min2();
-      break;
-    case 48:
-     houres(h);
-      m15();
-      before();
-      min3();
-      break;
-    case 49:
-     houres(h);
-      m15();
-      before();
-      min4();
-      break;
-    case 50:
-     houres(h);
-      m10();
-      before();
-      break;
-    case 51:
-     houres(h);
-      m10();
-      before();
-      min1();
-      break;
-    case 52:
-     houres(h);
-      m10();
-      before();
-      min2();
-      break;
-    case 53:
-     houres(h);
-      m10();
-      before();
-      min3();
-      break;
-    case 54:
-     houres(h);
-      m10();
-      before();
-      min4();
-      break;
-    case 55:
-     houres(h);
-      m5();
-      before();
-      break;
-    case 56:
-     houres(h);
-      m5();
-      before();
-      min1();
-      break;
-    case 57:
-     houres(h);
-      m5();
-      before();
-      min2();
-      break;
-    case 58:
-     houres(h);
-      m5();
-      before();
-      min3();
-      break;
-    case 59:
-     houres(h);
-      m5();
-      before();
-      min4();
-      break;
-
+  houres();
+  switch (m / 5) {          // Wörter in 5-Minuten-Schritten
+    case 1:  m5();   after();  break;
+    case 2:  m10();  after();  break;
+    case 3:  m15();  after();  break;
+    case 4:  m20();  after();  break;
+    case 5:  m5();   before(); half(); break;
+    case 6:  half(); break;
+    case 7:  half(); m5();     after(); break;
+    case 8:  m20();  before(); break;
+    case 9:  m15();  before(); break;
+    case 10: m10();  before(); break;
+    case 11: m5();   before(); break;
+  }
+  switch (m % 5) {          // Minutenpunkte
+    case 1: min1(); break;
+    case 2: min2(); break;
+    case 3: min3(); break;
+    case 4: min4(); break;
   }
 }
 
