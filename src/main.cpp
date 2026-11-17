@@ -105,7 +105,6 @@ void wort();
 void sym_showwifi();
 void sym_mm();
 void sym_aa();
-void sym_schminken();
 void sym_stufe();
 void itis();
 void m5();
@@ -141,8 +140,7 @@ void setup() {
   Serial.print("lokaler Port: ");
   Serial.println(Udp.localPort());
   Serial.println("Warten auf die Synchronisation");
-  setSyncProvider(getNtpTime);
-  setSyncInterval(86400);                    // Anzahl der Sekunden zwischen dem erneuten Synchronisieren ein. 86400 = 1 Tag
+  setSyncProvider(getNtpTime);               // getNtpTime() setzt das Intervall: 60 s nach Fehler, 86400 s (1 Tag) nach Erfolg
 
   irrecv.enableIRIn();  // Start the receiver
   Wire.begin(D4, D3);                       // (D3,SCL) und (D4,SDA) pins
@@ -159,8 +157,6 @@ void loop()
     lokaleZeit();
     wort();
   }
-  Serial.print("regenbogenfarbe");
-  Serial.println(regenbogenfarbe);
 
   helligkeit();
   if (aktuellertimer - menutimer > menuinterval) {
@@ -185,16 +181,13 @@ void helligkeit() {
   if (aktuellertimer - messtimer > timerinterval) {
     messtimer = millis();
     if (hellmodus == 0) {                    // keine messung auf manuellem modus (1)
-      luxSensor = lightMeter.readLightLevel();
+      float messung = lightMeter.readLightLevel();
+      if (messung >= 0) {                    // -1/-2 = Sensorfehler, letzten Wert behalten
+        luxSensor = messung;
+      }
     }
   }
-  lux = luxSensor;
-  lux = map(lux, 0, 10, 40, 255);
-
-  if (lux > 255) {
-    lux = 255;
-  }
-
+  lux = map(constrain(luxSensor, 0, 10), 0, 10, 40, 255);  // vor map begrenzen, sonst Überlauf in uint16_t
 
   if (hellmodus == 0) {
     strip.SetBrightness(lux);
@@ -615,52 +608,6 @@ void sym_aa() { //  male ein A für Auto oben links
   neo(43);
   neo(44);
 }
-void sym_schminken() {
-  neo(0);
-  neo(1);
-  neo(2);
-  neo(3);
-  neo(4);
-  neo(5);
-  neo(6);
-  neo(7);
-  neo(8);
-  neo(9);
-  neo(10);
-  neo(19);
-  neo(20);
-  neo(29);
-  neo(39);
-  neo(40);
-  neo(49);
-  neo(50);
-  neo(59);
-  neo(60);
-  neo(69);
-  neo(70);
-  neo(79);
-  neo(80);
-  neo(89);
-  neo(90);
-  neo(99);
-  neo(100);
-  neo(101);
-  neo(102);
-  neo(103);
-  neo(104);
-  neo(105);
-  neo(106);
-  neo(107);
-  neo(108);
-  neo(109);
-  neo(110);
-  neo(111);
-  neo(112);
-  neo(113);
-  neo(114);
-  strip.SetBrightness(50);
-}
-
 void sym_stufe() {
   switch (luxstufe) {
     case 1 :            // 1
@@ -1274,7 +1221,11 @@ time_t getNtpTime()
   while (Udp.parsePacket() > 0) ; // alle zuvor empfangenen Pakete verwerfen
   Serial.println("Transmit NTP Request");
   // einen zufälligen Server aus dem Pool holen
-  WiFi.hostByName(ntpServerName, ntpServerIP);
+  if (!WiFi.hostByName(ntpServerName, ntpServerIP)) {
+    Serial.println("NTP Server nicht gefunden");
+    setSyncInterval(60);                    // bald erneut versuchen statt erst in 1 Tag
+    return 0;
+  }
   Serial.print(ntpServerName);
   Serial.print(": ");
   Serial.println(ntpServerIP);
@@ -1291,10 +1242,12 @@ time_t getNtpTime()
       secsSince1900 |= (unsigned long)packetBuffer[41] << 16;
       secsSince1900 |= (unsigned long)packetBuffer[42] << 8;
       secsSince1900 |= (unsigned long)packetBuffer[43];
+      setSyncInterval(86400);               // 1 Tag bis zum nächsten Abgleich
       return secsSince1900 - 2208988800UL + timeZone * SECS_PER_HOUR;
     }
   }
   Serial.println("keine NTP Antwort");
+  setSyncInterval(60);                      // bald erneut versuchen statt erst in 1 Tag
   return 0; // gibt 0 zurück, wenn die Zeit nicht ermittelt werden kann.
 }
 
